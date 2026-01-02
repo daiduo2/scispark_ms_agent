@@ -1,0 +1,5 @@
+scispark_ms_skills_output/
+tasks.json
+__pycache__/
+*.pyc
+.env

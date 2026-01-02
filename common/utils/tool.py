@@ -1,0 +1,205 @@
+import os
+import re
+import time
+import ast
+from scispark_ms_skills.common.core.prompt import get_related_keyword_prompt, paper_compression_prompt, extract_entity_prompt, extract_tec_entities_prompt, review_mechanism_prompt
+from scispark_ms_skills.common.utils.llm_api import call_with_deepseek, call_with_deepseek_jsonout, call_with_qwenmax
+from scispark_ms_skills.common.utils.arxiv_api import search_paper
+from scispark_ms_skills.common.utils.scholar_download import download_all_pdfs
+from scispark_ms_skills.common.utils.pdf_to_md import pdf2md_mineruapi
+from scispark_ms_skills.common.utils.wiki_search import get_description, search
+from scispark_ms_skills.common.core.config import OUTPUT_PATH, graph
+
+def SearchKeyWordScore(Keywords):
+    for index, keyword in enumerate(Keywords):
+        entity = keyword['entity']
+        query = """
+        MATCH (n:Words)
+        WHERE n.other CONTAINS $entity OR n.name = $entity
+        RETURN n.count,n
+        ORDER BY n.count DESC
+        LIMIT 1
+        """
+        nodes = []
+        if graph:
+            try:
+                nodes = graph.run(query, entity=entity).data()
+            except Exception:
+                nodes = []
+        if len(nodes) != 0:
+            Keywords[index]['count'] = nodes[0]['n.count']
+        else:
+            Keywords[index]['count'] = 0
+    min_count = min(item['count'] for item in Keywords) if Keywords else 0
+    max_count = max(item['count'] for item in Keywords) if Keywords else 1
+    weight_importance = 0.4
+    weight_count = 0.6
+    for item in Keywords:
+        if max_count == min_count:
+            normalized_count = 0.5
+        else:
+            normalized_count = (item['count'] - min_count) / (max_count - min_count)
+        composite_score = (item['importance_score'] * weight_importance) + (normalized_count * weight_count)
+        item['composite_score'] = composite_score
+    sorted_data = sorted(Keywords, key=lambda x: x['composite_score'], reverse=True)
+    return sorted_data
+
+def get_related_keyword(Keyword):
+    user_prompt = get_related_keyword_prompt(Keyword=Keyword)
+    result = call_with_deepseek(system_prompt="You are a helpful assistant.", question=user_prompt)
+    return ast.literal_eval(result)
+
+def remove_number_prefix(paragraph):
+    pattern = r'^\d+\. |(?<=\n)\d+\. '
+    modified_paragraph = re.sub(pattern, '', paragraph, flags=re.MULTILINE)
+    return modified_paragraph
+
+def read_markdown_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+            return content
+    except Exception:
+        return ""
+
+def extract_hypothesis(file, split_section="Hypothesis"):
+    text = read_markdown_file(file)
+    pattern = re.compile(fr"{split_section} \d+:(.+?)\n", re.DOTALL)
+    matches = pattern.findall(text)
+    hypotheses = [match.strip() for match in matches]
+    return hypotheses
+
+def paper_compression(doi, title, topic, user_id, task):
+    paper_pdf_path = download_all_pdfs(dois=doi, title=title, topic=topic, user_id=user_id, task=task)
+    task_id = getattr(task, 'request', {}).get('id', 'default_task_id') if task else 'default_task_id'
+    file_path_prefix = fr"{OUTPUT_PATH}/{user_id}/{task_id}/{topic}/Paper"
+    directory = fr"{file_path_prefix}/compression"
+    batch_id = pdf2md_mineruapi(file_path=paper_pdf_path, topic=topic, user_id=user_id, task=task)
+    if batch_id == 0:
+        time.sleep(10)
+        batch_id = pdf2md_mineruapi(file_path=paper_pdf_path, topic=topic, user_id=user_id, task=task)
+    pattern = r'#{0,}\s*References.*'
+    if batch_id != 0:
+        paper_content = read_markdown_file(file_path=fr"{file_path_prefix}/markdown/{batch_id}.md")
+        paper_content = re.sub(pattern, '', paper_content, flags=re.DOTALL | re.IGNORECASE)
+    else:
+        return 'None'
+    system_prompt = paper_compression_prompt()
+    compression_result = call_with_qwenmax(question=f"The content is '''{paper_content}'''", system_prompt=system_prompt)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(fr"{directory}/{batch_id}.md", 'w', encoding='utf-8') as f:
+        f.write(compression_result)
+    return compression_result
+
+def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", task=None):
+    keynum = 0
+    relatedPaper = []
+    Entities = []
+    papers = search_paper(Keywords=[topic], Limit=max_paper_num)
+    for paper in papers:
+        if compression:
+            try:
+                compression_result = paper_compression(doi=paper["doi"], title=paper["title"], topic=topic, user_id=user_id, task=task)
+            except Exception:
+                compression_result = "None"
+        else:
+            compression_result = "None"
+        try:
+            relatedPaper.append({"title": paper["title"], "abstract": paper["abstract"], "compression_result": compression_result})
+            for keyword in paper["keyword"]:
+                Entities.append(keyword)
+        except:
+            pass
+    try:
+        json_result = call_with_deepseek_jsonout(system_prompt=extract_entity_prompt(), question=f"""The content is: {Entities}.""")
+        Keywords = json_result.get('keywords', []) if json_result else []
+    except Exception:
+        Keywords = []
+    keyword_str = ""
+    for keyword in Keywords:
+        keynum += 1
+        temp = get_description(search(query=keyword))
+        if not temp:
+            keyword_str += f"{keyword};\n"
+        else:
+            keyword_str += f"{keyword}:{temp[0]};\n"
+    return keynum, relatedPaper, keyword_str
+
+def extract_message(file, split_section):
+    text = read_markdown_file(file)
+    if split_section != "":
+        match = re.search(fr'### \S*{split_section}\S*(.*?)(?=###|---|\Z)', text, re.DOTALL)
+        if match:
+            problem_statement = match.group(1).strip()
+        else:
+            problem_statement = ""
+    else:
+        problem_statement = ""
+    return text, problem_statement
+
+def extract_technical_entities(file, split_section):
+    text, problem_statement = extract_message(file, split_section)
+    system_prompt = extract_tec_entities_prompt()
+    Keywords = call_with_deepseek_jsonout(system_prompt=system_prompt, question=f'The content is: {problem_statement}')['keywords']
+    sorted_entities = SearchKeyWordScore(Keywords)
+    return sorted_entities, text
+
+def extract_message_review(file, split_section):
+    text = read_markdown_file(file)
+    if split_section != "":
+        match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
+        if match:
+            problem_statement = match.group(2).strip()
+        else:
+            problem_statement = ""
+    if split_section == "Iterative Optimization Search Keywords":
+        question = f"""Based on the content provided below, extract the next optimization search keywords. Return the 
+        result only in the following JSON format. Do not add any explanations or irrelevant information. JSON output 
+        format: {{ "optimization_keyword": "xxx", ... }}
+        
+        Content to extract:
+        '''
+        #{split_section}\n{problem_statement}
+        '''"""
+    elif split_section == "Next Steps for Optimization":
+        question = f"""Based on the content provided below, extract the next optimization goal. Return the result 
+        only in the following JSON format. Do not add any explanations or irrelevant information. JSON output format: 
+        {{ "optimization_goal": "xxx", ... }}
+        
+        Content to extract:
+        '''
+        #{split_section}\n{problem_statement}
+        '''"""
+    else:
+        question = problem_statement
+    result = call_with_deepseek_jsonout(question=question, system_prompt="")
+    return text, result
+
+def review_mechanism(topic, draft="", user_id="", task=None):
+    system_prompt = review_mechanism_prompt()
+    user_prompt = f"""# Idea Draft\n{draft}"""
+    result = call_with_qwenmax(system_prompt=system_prompt, question=user_prompt)
+    task_id = getattr(task, 'request', {}).get('id', 'default_task_id') if task else 'default_task_id'
+    file_path_prefix = fr"{OUTPUT_PATH}/{user_id}/{task_id}/{topic}/Review"
+    os.makedirs(file_path_prefix, exist_ok=True)
+    with open(fr"{file_path_prefix}/{topic}_review.md", 'w', encoding='utf-8') as f:
+        f.write(result)
+    text, optimize_messages = extract_message_review(file=fr"{file_path_prefix}/{topic}_review.md", split_section="Iterative Optimization Search Keywords")
+    keywords = []
+    for optimize_message in optimize_messages.values():
+        keywords.append({'keyword': optimize_message})
+    return keywords
+
+def extract_message_review_moa(file, split_section):
+    text = read_markdown_file(file)
+    if split_section != "":
+        match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
+        if match:
+            problem_statement = match.group(2).strip().split('\n')
+        else:
+            problem_statement = []
+    else:
+        problem_statement = []
+    return text, problem_statement
+
