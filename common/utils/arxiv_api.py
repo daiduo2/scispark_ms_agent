@@ -34,7 +34,17 @@ def get_papers(query="astronomy", max_results=2):
 
 def search_paper(Keywords, Limit=2):
     data_collector = []
+    normalized = []
     for keyword in Keywords:
-        data_collector += get_papers(query=keyword, max_results=Limit)
+        if isinstance(keyword, dict):
+            k = keyword.get("entity") or keyword.get("keyword")
+            if k is None:
+                k = str(keyword)
+        else:
+            k = str(keyword)
+        if k:
+            normalized.append(k)
+    for kw in normalized:
+        data_collector += get_papers(query=kw, max_results=Limit)
     return data_collector
 

@@ -86,7 +86,8 @@ def Initial_Idea(Keyword, SearchPaperNum=5, Compression=True, user_id="", task=N
     else:
         for index, paper in enumerate(relatedPaper):
             title_abstract_prompt += f"\n# The {index + 1} related paper\n## title\n{paper['title']}\n## abstract\n{paper['abstract']}\n"
-    user_prompt = initial_idea_prompt(hypotheses_prompt=hypotheses_result, title_abstract_prompt=title_abstract_prompt, keyword_str=keyword_str, hypotheses_index=hypotheses_index, index=index, keynum=keynum)
+    paper_count = len(relatedPaper)
+    user_prompt = initial_idea_prompt(hypotheses_prompt=hypotheses_result, title_abstract_prompt=title_abstract_prompt, keyword_str=keyword_str, hypotheses_index=hypotheses_index, index=paper_count, keynum=keynum)
     task_id = getattr(task, 'request', {}).get('id', 'default_task_id') if task else 'default_task_id'
     file_path_prefix = fr"{OUTPUT_PATH}/{user_id}/{task_id}/{Keyword}/Idea"
     os.makedirs(file_path_prefix, exist_ok=True)

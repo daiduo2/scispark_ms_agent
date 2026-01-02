@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 OUTPUT_PATH = settings.OUTPUT_PATH
+MinerU_Token = settings.MINERU_API_TOKEN
 
 def get_proxies():
     proxies = {}
