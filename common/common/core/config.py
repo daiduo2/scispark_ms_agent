@@ -30,11 +30,35 @@ def get_proxies():
 
 Proxies = get_proxies()
 
-try:
-    from py2neo import Graph
-    neo4j_url = f"bolt://{settings.NEO4J_HOST}:{settings.NEO4J_PORT}"
-    graph = Graph(neo4j_url, auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD))
-    graph.run("RETURN 1").data()
-except Exception:
-    graph = None
+graph = None
+_graph_inited = False
+
+def get_graph():
+    """鑾峰彇Neo4j杩炴帴瀹炰緥锛岄噰鐢ㄦ儼鎬у垵濮嬪寲骞跺け璐ュ畨鍏?    
+    杩斿洖:
+    - Graph 鎴?None锛氬綋鐜鍙橀噺缂哄け鎴栬繛鎺ュけ璐ユ椂杩斿洖 None锛屼笉鎶涘嚭寮傚父
+    """
+    global graph, _graph_inited
+    if _graph_inited and graph is not None:
+        return graph
+    _graph_inited = True
+    try:
+        from py2neo import Graph
+        host = settings.NEO4J_HOST.strip()
+        port = str(settings.NEO4J_PORT).strip()
+        user = settings.NEO4J_USERNAME
+        password = settings.NEO4J_PASSWORD
+        if not host or not port:
+            graph = None
+            return graph
+        neo4j_url = f"bolt://{host}:{port}"
+        g = Graph(neo4j_url, auth=(user, password))
+        try:
+            g.run("RETURN 1").data()
+            graph = g
+        except Exception:
+            graph = None
+    except Exception:
+        graph = None
+    return graph
 
