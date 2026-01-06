@@ -32,7 +32,6 @@ Proxies = get_proxies()
 
 graph = None
 _graph_inited = False
-
 def get_graph():
     """鑾峰彇Neo4j杩炴帴瀹炰緥锛岄噰鐢ㄦ儼鎬у垵濮嬪寲骞跺け璐ュ畨鍏?    
     杩斿洖:
