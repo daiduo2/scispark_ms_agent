@@ -19,11 +19,6 @@ jobs:
           NEO4J_AUTH: neo4j:test
         ports:
           - 7687:7687
-        options: >-
-          --health-cmd \"cypher-shell -a bolt://localhost:7687 -u neo4j -p test 'RETURN 1' || exit 1\"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
     strategy:
       fail-fast: false
       matrix:
