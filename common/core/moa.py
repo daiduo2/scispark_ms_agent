@@ -2,9 +2,9 @@ import agentscope
 from agentscope import msghub
 from agentscope.agents import DialogAgent
 from agentscope.message import Msg
-from scispark_ms_skills.common.core.config import OUTPUT_PATH, settings
+from common.core.config import OUTPUT_PATH, settings
 import os
-from scispark_ms_skills.common.core.tpl import tpl_env
+from common.core.tpl import tpl_env
 
 model_configs = [
     {
@@ -45,7 +45,7 @@ def moa_idea_iteration(topic="", user_prompt="", user_id="", task=None):
         "DeepSeek_message": QwenC_message.content,
         "Gemini_message": QwenA_message.content,
     }
-    aggregation = aggregation_tpl.render(data=data)
+    aggregation = aggregation_tpl.render(**data)
     AC_message = dialogAgent_AC(Msg(name="User", role="user", content=aggregation))
     with open(fr"{file_path_prefix}/AC_{topic}_moa.md", 'w', encoding='utf-8') as f:
         f.write(AC_message.content)
@@ -92,4 +92,3 @@ def moa_table(model_configs=model_configs, topic='', draft='', user_id='', task=
     with open(fr"{file_path_prefix}/{topic}_review_moa.md", 'w', encoding='utf-8') as f:
         f.write(viewer_message.content)
     agentscope.print_llm_usage()
-
