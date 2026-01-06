@@ -42,48 +42,49 @@ def main():
     args = p.parse_args()
 
     if args.cmd == "workflow":
-        from scispark_ms_skills.skills.academic_workflow.scripts.main import run as run_workflow
+        from skills.academic_workflow.scripts.main import run as run_workflow
         result = run_workflow(topic=args.topic, search_paper_num=args.num, compression=args.compression, user_id=args.user_id)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
     if args.cmd == "enqueue":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import enqueue
+        from skills.academic_workflow.scripts.queue import enqueue
         tid = enqueue(topic=args.topic, search_paper_num=args.num, compression=args.compression, user_id=args.user_id)
         print(tid)
         return
 
     if args.cmd == "worker":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import run_worker
+        from skills.academic_workflow.scripts.queue import run_worker
         run_worker(interval=args.interval, once=args.once)
         return
 
     if args.cmd == "status":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import get_task
+        from skills.academic_workflow.scripts.queue import get_task
         task = get_task(task_id=args.task_id)
         print(json.dumps(task, ensure_ascii=False, indent=2))
         return
 
     if args.cmd == "list":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import list_tasks
+        from skills.academic_workflow.scripts.queue import list_tasks
         tasks = list_tasks(status=args.status)
         print(json.dumps(tasks, ensure_ascii=False, indent=2))
         return
 
     if args.cmd == "cancel":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import cancel_task
+        from skills.academic_workflow.scripts.queue import cancel_task
         ok = cancel_task(task_id=args.task_id)
         print("true" if ok else "false")
         return
 
     if args.cmd == "continue":
-        from scispark_ms_skills.skills.academic_workflow.scripts.queue import continue_task
+        from skills.academic_workflow.scripts.queue import continue_task
         ok = continue_task(task_id=args.task_id)
         print("true" if ok else "false")
         return
 
     if args.cmd == "nl":
-        from scispark_ms_skills.common.utils.llm_api import call_with_deepseek_jsonout
+        from common.utils.llm_api import call_with_deepseek_jsonout
+        from common.core.skills_registry import make_default_plan, orchestrate
         system_prompt = (
             "You will parse the user's natural language into a JSON object with fields: "
             "intent (one of: start_workflow, enqueue_task, run_worker_once, run_worker, "
@@ -97,8 +98,8 @@ def main():
             num = int(params.get("num", 5))
             compression = parse_bool(params.get("compression", True))
             user_id = params.get("user_id", "cli_user")
-            from scispark_ms_skills.skills.academic_workflow.scripts.main import run as run_workflow
-            result = run_workflow(topic=topic, search_paper_num=num, compression=compression, user_id=user_id)
+            plan = make_default_plan(topic=topic, num=num, compression=compression, user_id=user_id)
+            result = orchestrate(plan=plan)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return
         if intent == "enqueue_task":
