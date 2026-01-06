@@ -109,17 +109,17 @@ def paper_compression(doi, title, topic, user_id, task):
     return compression_result
 
 def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", task=None):
-    """妫€绱㈢浉鍏宠鏂囧苟鎻愬彇棰嗗煙瀹炰綋锛屾敮鎸佷弗鏍煎洖閫€鍒版憳瑕佹娊鍙?
+    """检索相关论文并提取领域实体，支持严格回退到摘要抽取
     
-    鍙傛暟:
-    - topic: 涓婚鍚嶇О
-    - max_paper_num: 鏈€澶ц鏂囨暟閲?
-    - compression: 鏄惁杩涜璁烘枃鍐呭鍘嬬缉
-    - user_id: 鐢ㄦ埛鏍囪瘑
-    - task: 浠诲姟瀵硅薄锛堢敤浜庣洰褰曞綊妗ｏ級
+    参数:
+    - topic: 主题名称
+    - max_paper_num: 最大论文数量
+    - compression: 是否进行论文内容压缩
+    - user_id: 用户标识
+    - task: 任务对象（用于目录归档）
     
-    杩斿洖:
-    - (keynum, relatedPaper, keyword_str): 鍏抽敭璇嶈鏁般€佺浉鍏宠鏂囧垪琛ㄣ€佸叧閿瘝璇存槑瀛楃涓?
+    返回:
+    - (keynum, relatedPaper, keyword_str): 关键词计数、相关论文列表、关键词说明字符串
     """
     keynum = 0
     relatedPaper = []
@@ -133,12 +133,12 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
                 compression_result = "None"
         else:
             compression_result = "None"
-        # 鐠佹澘缍嶇拋鐑樻瀮閸╃儤婀版穱鈩冧紖
+        # 璁板綍璁烘枃鍩烘湰淇℃伅
         try:
             relatedPaper.append({"title": paper["title"], "abstract": paper["abstract"], "compression_result": compression_result})
         except Exception:
             continue
-        # 娴兼ê鍘涙担璺ㄦ暏鐠佺儤鏋冮崗鎶芥暛鐠囧稄绱遍懟銉у繁婢跺崬鍨稉銉︾壐閸ョ偤鈧偓閸掔増鎲崇憰浣哥杽娴ｆ挻濞婇崣?
+        # 浼樺厛浣跨敤璁烘枃鍏抽敭璇嶏紱鑻ョ己澶卞垯涓ユ牸鍥為€€鍒版憳瑕佸疄浣撴娊鍙?
         paper_keywords = paper.get("keyword")
         if paper_keywords:
             try:
@@ -170,14 +170,14 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
     return keynum, relatedPaper, keyword_str
 
 def extract_message(file, split_section):
-    """浠?Markdown 鏂囦欢涓弗鏍兼彁鍙栨寚瀹氬垎鑺傚唴瀹?
+    """从 Markdown 文件中严格提取指定分节内容
     
-    鍙傛暟:
-    - file: 杈撳叆 Markdown 鏂囦欢璺緞
-    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
     
-    杩斿洖:
-    - (text, problem_statement): 鍘熷鏂囨湰涓庡垎鑺傚唴瀹癸紙涓ユ牸鍖归厤澶辫触鍒欐姏鍑哄紓甯革級
+    返回:
+    - (text, problem_statement): 原始文本与分节内容（严格匹配失败则抛出异常）
     """
     text = read_markdown_file(file)
     if not split_section:
@@ -189,14 +189,14 @@ def extract_message(file, split_section):
     return text, problem_statement
 
 def extract_technical_entities(file, split_section):
-    """閽堝鎸囧畾鍒嗚妭鍐呭杩涜鎶€鏈疄浣撴娊鍙栧苟璇勫垎鎺掑簭
+    """针对指定分节内容进行技术实体抽取并评分排序
     
-    鍙傛暟:
-    - file: 杈撳叆 Markdown 鏂囦欢璺緞
-    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
     
-    杩斿洖:
-    - (sorted_entities, text): 鎺掑簭鍚庣殑瀹炰綋鍒楄〃涓庡師濮嬫枃鏈?
+    返回:
+    - (sorted_entities, text): 排序后的实体列表与原始文本
     """
     text, problem_statement = extract_message(file, split_section)
     system_prompt = extract_tec_entities_prompt()
@@ -205,14 +205,14 @@ def extract_technical_entities(file, split_section):
     return sorted_entities, text
 
 def extract_message_review(file, split_section):
-    """浠庤瘎瀹?Markdown 涓弗鏍兼娊鍙栨寚瀹氬垎鑺傚苟缁撴瀯鍖栬В鏋?
+    """从评审 Markdown 中严格抽取指定分节并结构化解析
     
-    鍙傛暟:
-    - file: 杈撳叆 Markdown 鏂囦欢璺緞
-    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
     
-    杩斿洖:
-    - (text, result): 鍘熷鏂囨湰涓庣粨鏋勫寲瑙ｆ瀽缁撴灉锛堜弗鏍煎尮閰嶅け璐ュ垯鎶涘嚭寮傚父锛?
+    返回:
+    - (text, result): 原始文本与结构化解析结果（严格匹配失败则抛出异常）
     """
     text = read_markdown_file(file)
     if not split_section:
@@ -245,16 +245,16 @@ def extract_message_review(file, split_section):
     return text, result
 
 def review_mechanism(topic, draft="", user_id="", task=None):
-    """鎵ц璇勫鏈哄埗锛岀敓鎴愯瘎瀹℃枃浠跺苟瑙ｆ瀽浼樺寲鍏抽敭璇?
+    """执行评审机制，生成评审文件并解析优化关键词
     
-    鍙傛暟:
-    - topic: 涓婚鍚嶇О
-    - draft: 鑽夋鍐呭
-    - user_id: 鐢ㄦ埛鏍囪瘑
-    - task: 浠诲姟瀵硅薄锛堢敤浜庣洰褰曞綊妗ｏ級
+    参数:
+    - topic: 主题名称
+    - draft: 草案内容
+    - user_id: 用户标识
+    - task: 任务对象（用于目录归档）
     
-    杩斿洖:
-    - keywords: 浠庤瘎瀹＄粨鏋滄彁鍙栫殑浼樺寲鍏抽敭璇嶅垪琛?
+    返回:
+    - keywords: 从评审结果提取的优化关键词列表
     """
     system_prompt = review_mechanism_prompt()
     user_prompt = f"""# Idea Draft\n{draft}"""
@@ -271,14 +271,14 @@ def review_mechanism(topic, draft="", user_id="", task=None):
     return keywords
 
 def extract_message_review_moa(file, split_section):
-    """浠?MoA 璇勫 Markdown 涓弗鏍兼娊鍙栨寚瀹氬垎鑺傚苟杩斿洖琛屽垪琛?
+    """从 MoA 评审 Markdown 中严格抽取指定分节并返回行列表
     
-    鍙傛暟:
-    - file: 杈撳叆 Markdown 鏂囦欢璺緞
-    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
     
-    杩斿洖:
-    - (text, problem_statement): 鍘熷鏂囨湰涓庡垎鑺傚唴瀹圭殑琛屽垪琛紙涓ユ牸鍖归厤澶辫触鍒欐姏鍑哄紓甯革級
+    返回:
+    - (text, problem_statement): 原始文本与分节内容的行列表（严格匹配失败则抛出异常）
     """
     text = read_markdown_file(file)
     if not split_section:
