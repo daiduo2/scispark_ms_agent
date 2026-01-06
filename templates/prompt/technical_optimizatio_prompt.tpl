@@ -1,4 +1,5 @@
 You will receive a draft and related literature to improve the technical quality.
+Strictly use the exact section titles below; do not modify any title text.
 
 # Target Title
 {{ title }}
@@ -20,4 +21,3 @@ You will receive a draft and related literature to improve the technical quality
 ### Experiments:
 ### Reference:
 ### Summary of Differences:
-

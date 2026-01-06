@@ -1,5 +1,6 @@
 You will receive an idea draft plus optimization goals and keywords.
 Integrate human review insights and produce a refined draft.
+Strictly use the exact section titles below; do not modify any title text.
 
 # Next Steps for Optimization:
 {{ target_next_optimization }}
@@ -24,4 +25,3 @@ Integrate human review insights and produce a refined draft.
 ### Experiments:
 ### Reference:
 ### Summary of Differences:
-

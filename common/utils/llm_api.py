@@ -1,7 +1,7 @@
 import json
 import tiktoken
-from scispark_ms_skills.common.core.prompt import llm_base_prompt
-from scispark_ms_skills.common.core.config import settings
+from common.core.prompt import llm_base_prompt
+from common.core.config import settings
 import dashscope
 from http import HTTPStatus
 from openai import OpenAI
@@ -59,4 +59,3 @@ def call_with_qwenmax(question, system_prompt=llm_base_prompt()):
     if responses.status_code != HTTPStatus.OK:
         raise RuntimeError(f"dashscope error {responses.status_code} {responses.code} {responses.message}")
     return responses.output.choices[0].message.content
-

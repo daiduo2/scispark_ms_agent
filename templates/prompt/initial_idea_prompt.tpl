@@ -1,5 +1,6 @@
 You will receive hypotheses, related papers, and domain keywords.
 Synthesize an initial research idea.
+Strictly use the exact section titles below; do not modify any title text.
 
 # Hypotheses
 {{ hypotheses_prompt }}
@@ -20,4 +21,3 @@ Synthesize an initial research idea.
 ### Methods:
 ### Experiments:
 ### Reference:
-

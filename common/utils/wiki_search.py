@@ -2,7 +2,7 @@ import json
 import re
 import time
 import requests
-from scispark_ms_skills.common.core.config import Proxies
+from common.core.config import Proxies
 
 def remove_html_tags(text):
     clean = re.compile('<.*?>')
