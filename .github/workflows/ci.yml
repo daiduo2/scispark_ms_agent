@@ -16,7 +16,7 @@ jobs:
       neo4j:
         image: neo4j:5.15-community
         env:
-          NEO4J_AUTH: neo4j/test
+          NEO4J_AUTH: neo4j/neo4jpass
         ports:
           - 7687:7687
     strategy:
@@ -58,3 +58,4 @@ jobs:
       - name: Run pytest
         run: |
           pytest -q
+
