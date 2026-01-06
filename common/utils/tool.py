@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import re
 import time
@@ -10,6 +11,20 @@ from common.utils.pdf_to_md import pdf2md_mineruapi
 from common.utils.wiki_search import get_description, search
 from common.core.config import OUTPUT_PATH, get_graph
 
+=======
+import os
+import re
+import time
+import ast
+from common.core.prompt import get_related_keyword_prompt, paper_compression_prompt, extract_entity_prompt, extract_tec_entities_prompt, review_mechanism_prompt
+from common.utils.llm_api import call_with_deepseek, call_with_deepseek_jsonout, call_with_qwenmax
+from common.utils.arxiv_api import search_paper
+from common.utils.scholar_download import download_all_pdfs
+from common.utils.pdf_to_md import pdf2md_mineruapi
+from common.utils.wiki_search import get_description, search
+from common.core.config import OUTPUT_PATH, get_graph
+
+>>>>>>> e967a4b (ci: run import check as script; pytest ignore duplicate tests; align neo4j password; add script entry)
 def SearchKeyWordScore(Keywords):
     for index, keyword in enumerate(Keywords):
         entity = keyword['entity']
@@ -118,12 +133,12 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
                 compression_result = "None"
         else:
             compression_result = "None"
-        # 璁板綍璁烘枃鍩烘湰淇℃伅
+        # 鐠佹澘缍嶇拋鐑樻瀮閸╃儤婀版穱鈩冧紖
         try:
             relatedPaper.append({"title": paper["title"], "abstract": paper["abstract"], "compression_result": compression_result})
         except Exception:
             continue
-        # 浼樺厛浣跨敤璁烘枃鍏抽敭璇嶏紱鑻ョ己澶卞垯涓ユ牸鍥為€€鍒版憳瑕佸疄浣撴娊鍙?
+        # 娴兼ê鍘涙担璺ㄦ暏鐠佺儤鏋冮崗鎶芥暛鐠囧稄绱遍懟銉у繁婢跺崬鍨稉銉︾壐閸ョ偤鈧偓閸掔増鎲崇憰浣哥杽娴ｆ挻濞婇崣?
         paper_keywords = paper.get("keyword")
         if paper_keywords:
             try:
