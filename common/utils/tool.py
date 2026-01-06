@@ -8,7 +8,7 @@ from common.utils.arxiv_api import search_paper
 from common.utils.scholar_download import download_all_pdfs
 from common.utils.pdf_to_md import pdf2md_mineruapi
 from common.utils.wiki_search import get_description, search
-from common.core.config import OUTPUT_PATH, graph
+from common.core.config import OUTPUT_PATH, get_graph
 
 def SearchKeyWordScore(Keywords):
     for index, keyword in enumerate(Keywords):
@@ -21,9 +21,10 @@ def SearchKeyWordScore(Keywords):
         LIMIT 1
         """
         nodes = []
-        if graph:
+        g = get_graph()
+        if g:
             try:
-                nodes = graph.run(query, entity=entity).data()
+                nodes = g.run(query, entity=entity).data()
             except Exception:
                 nodes = []
         if len(nodes) != 0:
@@ -93,17 +94,17 @@ def paper_compression(doi, title, topic, user_id, task):
     return compression_result
 
 def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", task=None):
-    """检索相关论文并提取领域实体，支持严格回退到摘要抽取
+    """妫€绱㈢浉鍏宠鏂囧苟鎻愬彇棰嗗煙瀹炰綋锛屾敮鎸佷弗鏍煎洖閫€鍒版憳瑕佹娊鍙?
     
-    参数:
-    - topic: 主题名称
-    - max_paper_num: 最大论文数量
-    - compression: 是否进行论文内容压缩
-    - user_id: 用户标识
-    - task: 任务对象（用于目录归档）
+    鍙傛暟:
+    - topic: 涓婚鍚嶇О
+    - max_paper_num: 鏈€澶ц鏂囨暟閲?
+    - compression: 鏄惁杩涜璁烘枃鍐呭鍘嬬缉
+    - user_id: 鐢ㄦ埛鏍囪瘑
+    - task: 浠诲姟瀵硅薄锛堢敤浜庣洰褰曞綊妗ｏ級
     
-    返回:
-    - (keynum, relatedPaper, keyword_str): 关键词计数、相关论文列表、关键词说明字符串
+    杩斿洖:
+    - (keynum, relatedPaper, keyword_str): 鍏抽敭璇嶈鏁般€佺浉鍏宠鏂囧垪琛ㄣ€佸叧閿瘝璇存槑瀛楃涓?
     """
     keynum = 0
     relatedPaper = []
@@ -117,12 +118,12 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
                 compression_result = "None"
         else:
             compression_result = "None"
-        # 记录论文基本信息
+        # 璁板綍璁烘枃鍩烘湰淇℃伅
         try:
             relatedPaper.append({"title": paper["title"], "abstract": paper["abstract"], "compression_result": compression_result})
         except Exception:
             continue
-        # 优先使用论文关键词；若缺失则严格回退到摘要实体抽取
+        # 浼樺厛浣跨敤璁烘枃鍏抽敭璇嶏紱鑻ョ己澶卞垯涓ユ牸鍥為€€鍒版憳瑕佸疄浣撴娊鍙?
         paper_keywords = paper.get("keyword")
         if paper_keywords:
             try:
@@ -154,14 +155,14 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
     return keynum, relatedPaper, keyword_str
 
 def extract_message(file, split_section):
-    """从 Markdown 文件中严格提取指定分节内容
+    """浠?Markdown 鏂囦欢涓弗鏍兼彁鍙栨寚瀹氬垎鑺傚唴瀹?
     
-    参数:
-    - file: 输入 Markdown 文件路径
-    - split_section: 目标分节标题关键字（严格匹配）
+    鍙傛暟:
+    - file: 杈撳叆 Markdown 鏂囦欢璺緞
+    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
     
-    返回:
-    - (text, problem_statement): 原始文本与分节内容（严格匹配失败则抛出异常）
+    杩斿洖:
+    - (text, problem_statement): 鍘熷鏂囨湰涓庡垎鑺傚唴瀹癸紙涓ユ牸鍖归厤澶辫触鍒欐姏鍑哄紓甯革級
     """
     text = read_markdown_file(file)
     if not split_section:
@@ -173,14 +174,14 @@ def extract_message(file, split_section):
     return text, problem_statement
 
 def extract_technical_entities(file, split_section):
-    """针对指定分节内容进行技术实体抽取并评分排序
+    """閽堝鎸囧畾鍒嗚妭鍐呭杩涜鎶€鏈疄浣撴娊鍙栧苟璇勫垎鎺掑簭
     
-    参数:
-    - file: 输入 Markdown 文件路径
-    - split_section: 目标分节标题关键字（严格匹配）
+    鍙傛暟:
+    - file: 杈撳叆 Markdown 鏂囦欢璺緞
+    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
     
-    返回:
-    - (sorted_entities, text): 排序后的实体列表与原始文本
+    杩斿洖:
+    - (sorted_entities, text): 鎺掑簭鍚庣殑瀹炰綋鍒楄〃涓庡師濮嬫枃鏈?
     """
     text, problem_statement = extract_message(file, split_section)
     system_prompt = extract_tec_entities_prompt()
@@ -189,14 +190,14 @@ def extract_technical_entities(file, split_section):
     return sorted_entities, text
 
 def extract_message_review(file, split_section):
-    """从评审 Markdown 中严格抽取指定分节并结构化解析
+    """浠庤瘎瀹?Markdown 涓弗鏍兼娊鍙栨寚瀹氬垎鑺傚苟缁撴瀯鍖栬В鏋?
     
-    参数:
-    - file: 输入 Markdown 文件路径
-    - split_section: 目标分节标题关键字（严格匹配）
+    鍙傛暟:
+    - file: 杈撳叆 Markdown 鏂囦欢璺緞
+    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
     
-    返回:
-    - (text, result): 原始文本与结构化解析结果（严格匹配失败则抛出异常）
+    杩斿洖:
+    - (text, result): 鍘熷鏂囨湰涓庣粨鏋勫寲瑙ｆ瀽缁撴灉锛堜弗鏍煎尮閰嶅け璐ュ垯鎶涘嚭寮傚父锛?
     """
     text = read_markdown_file(file)
     if not split_section:
@@ -229,16 +230,16 @@ def extract_message_review(file, split_section):
     return text, result
 
 def review_mechanism(topic, draft="", user_id="", task=None):
-    """执行评审机制，生成评审文件并解析优化关键词
+    """鎵ц璇勫鏈哄埗锛岀敓鎴愯瘎瀹℃枃浠跺苟瑙ｆ瀽浼樺寲鍏抽敭璇?
     
-    参数:
-    - topic: 主题名称
-    - draft: 草案内容
-    - user_id: 用户标识
-    - task: 任务对象（用于目录归档）
+    鍙傛暟:
+    - topic: 涓婚鍚嶇О
+    - draft: 鑽夋鍐呭
+    - user_id: 鐢ㄦ埛鏍囪瘑
+    - task: 浠诲姟瀵硅薄锛堢敤浜庣洰褰曞綊妗ｏ級
     
-    返回:
-    - keywords: 从评审结果提取的优化关键词列表
+    杩斿洖:
+    - keywords: 浠庤瘎瀹＄粨鏋滄彁鍙栫殑浼樺寲鍏抽敭璇嶅垪琛?
     """
     system_prompt = review_mechanism_prompt()
     user_prompt = f"""# Idea Draft\n{draft}"""
@@ -255,14 +256,14 @@ def review_mechanism(topic, draft="", user_id="", task=None):
     return keywords
 
 def extract_message_review_moa(file, split_section):
-    """从 MoA 评审 Markdown 中严格抽取指定分节并返回行列表
+    """浠?MoA 璇勫 Markdown 涓弗鏍兼娊鍙栨寚瀹氬垎鑺傚苟杩斿洖琛屽垪琛?
     
-    参数:
-    - file: 输入 Markdown 文件路径
-    - split_section: 目标分节标题关键字（严格匹配）
+    鍙傛暟:
+    - file: 杈撳叆 Markdown 鏂囦欢璺緞
+    - split_section: 鐩爣鍒嗚妭鏍囬鍏抽敭瀛楋紙涓ユ牸鍖归厤锛?
     
-    返回:
-    - (text, problem_statement): 原始文本与分节内容的行列表（严格匹配失败则抛出异常）
+    杩斿洖:
+    - (text, problem_statement): 鍘熷鏂囨湰涓庡垎鑺傚唴瀹圭殑琛屽垪琛紙涓ユ牸鍖归厤澶辫触鍒欐姏鍑哄紓甯革級
     """
     text = read_markdown_file(file)
     if not split_section:
