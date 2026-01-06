@@ -8,6 +8,6 @@ scihub-cn>=0.1.1,<1
 py2neo==2021.2.4
 tiktoken>=0.5.2,<1
 openai>=1.2,<2
-dashscope>=1.24.6,<2
+dashscope==1.14.1
 agentscope==0.1.0
 pandas>=2.2,<3
