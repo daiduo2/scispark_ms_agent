@@ -12,6 +12,18 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5.15-community
+        env:
+          NEO4J_AUTH: neo4j:${{ secrets.NEO4J_PASSWORD }}
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "bash -c 'cypher-shell -a bolt://localhost:7687 -u neo4j -p $NEO4J_PASSWORD \"RETURN 1\" || exit 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +48,12 @@ jobs:
           pip install "scihub-cn==0.1.1" --no-build-isolation
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest
+      - name: Set environment variables
+        run: |
+          echo "NEO4J_USERNAME=neo4j" >> $GITHUB_ENV
+          echo "NEO4J_HOST=localhost" >> $GITHUB_ENV
+          echo "NEO4J_PORT=7687" >> $GITHUB_ENV
+          echo "OUTPUT_PATH=./scispark_ms_skills_output" >> $GITHUB_ENV
 
       - name: Run import smoke script
         run: |
@@ -43,4 +61,4 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -q || true
+          pytest -q
