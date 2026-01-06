@@ -6,7 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 from scihub_cn.scihub import SciHub
-from scispark_ms_skills.common.core.config import OUTPUT_PATH, Proxies
+from common.core.config import OUTPUT_PATH, Proxies
 
 def check_pdf(file_path):
     try:
