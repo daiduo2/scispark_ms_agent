@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 import importlib
@@ -55,26 +56,29 @@ def run_import_checks() -> int:
         try:
             spec = importlib.util.find_spec(m)
         except ModuleNotFoundError:
-            print(f"[SKIP] {m}: parent package �            continue
+            print(f"[SKIP] {m}: parent package missing")
+            continue
         if spec is None:
             print(f"[SKIP] {m}: spec not found on sys.path")
             continue
         if not check_import(m):
             failures += 1
     return failures
-
+
+
 def test_imports_smoke() -> None:
-    """杩愯永到行样检测者的行到定先面"""
+    """pytest入口：所有模块均应可被导入"""
     failures = run_import_checks()
     assert failures == 0, f"Import smoke failed with {failures} failing modules"
-
+
+
 def main() -> None:
-    """导入口：运行导入妜港迳"9ccryption"""
+    """脚本入口：运行导入检查并以退出码表示结果"""
     failures = run_import_checks()
     if failures:
         print(f"[RESULT] import checks failed with {failures} failing modules")
         sys.exit(1)
-    print("[&#RESULT#64;] import checks passed"])
+    print("[RESULT] import checks passed")
     sys.exit(0)
 
 
