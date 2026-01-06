@@ -16,11 +16,11 @@ jobs:
       neo4j:
         image: neo4j:5.15-community
         env:
-          NEO4J_AUTH: neo4j:${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_AUTH: neo4j:test
         ports:
           - 7687:7687
         options: >-
-          --health-cmd "bash -c 'cypher-shell -a bolt://localhost:7687 -u neo4j -p $NEO4J_PASSWORD \"RETURN 1\" || exit 1'"
+          --health-cmd \"cypher-shell -a bolt://localhost:7687 -u neo4j -p test 'RETURN 1' || exit 1\"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 20
@@ -53,6 +53,7 @@ jobs:
           echo "NEO4J_USERNAME=neo4j" >> $GITHUB_ENV
           echo "NEO4J_HOST=localhost" >> $GITHUB_ENV
           echo "NEO4J_PORT=7687" >> $GITHUB_ENV
+          echo "NEO4J_PASSWORD=test" >> $GITHUB_ENV
           echo "OUTPUT_PATH=./scispark_ms_skills_output" >> $GITHUB_ENV
 
       - name: Run import smoke script
