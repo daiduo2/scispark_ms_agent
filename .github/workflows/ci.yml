@@ -11,7 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     services:
       neo4j:
         image: neo4j:5.15-community
@@ -24,7 +23,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 12
-
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +34,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
       - name: Install dependencies
         env:
@@ -44,15 +47,18 @@ jobs:
           pip install "scihub-cn==0.1.1" --no-build-isolation
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest
-
-      - name: Export environment variables
+      - name: Set environment variables
         run: |
+          echo "NEO4J_USERNAME=neo4j" >> $GITHUB_ENV
           echo "NEO4J_HOST=localhost" >> $GITHUB_ENV
           echo "NEO4J_PORT=7687" >> $GITHUB_ENV
-          echo "NEO4J_USERNAME=neo4j" >> $GITHUB_ENV
           echo "NEO4J_PASSWORD=neo4jpass" >> $GITHUB_ENV
+          echo "OUTPUT_PATH=./scispark_ms_skills_output" >> $GITHUB_ENV
 
-      - name: Run import smoke tests
+      - name: Run import smoke script
         run: |
-          python -m pytest -q tests/test_imports.py
+          python tests/test_imports.py
+      - name: Run pytest (excluding import check script)
+        run: |
+          pytest -q --ignore=tests/test_imports.py
 
