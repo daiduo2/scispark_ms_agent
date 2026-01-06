@@ -2,13 +2,13 @@ import os
 import re
 import time
 import ast
-from scispark_ms_skills.common.core.prompt import get_related_keyword_prompt, paper_compression_prompt, extract_entity_prompt, extract_tec_entities_prompt, review_mechanism_prompt
-from scispark_ms_skills.common.utils.llm_api import call_with_deepseek, call_with_deepseek_jsonout, call_with_qwenmax
-from scispark_ms_skills.common.utils.arxiv_api import search_paper
-from scispark_ms_skills.common.utils.scholar_download import download_all_pdfs
-from scispark_ms_skills.common.utils.pdf_to_md import pdf2md_mineruapi
-from scispark_ms_skills.common.utils.wiki_search import get_description, search
-from scispark_ms_skills.common.core.config import OUTPUT_PATH, graph
+from common.core.prompt import get_related_keyword_prompt, paper_compression_prompt, extract_entity_prompt, extract_tec_entities_prompt, review_mechanism_prompt
+from common.utils.llm_api import call_with_deepseek, call_with_deepseek_jsonout, call_with_qwenmax
+from common.utils.arxiv_api import search_paper
+from common.utils.scholar_download import download_all_pdfs
+from common.utils.pdf_to_md import pdf2md_mineruapi
+from common.utils.wiki_search import get_description, search
+from common.core.config import OUTPUT_PATH, graph
 
 def SearchKeyWordScore(Keywords):
     for index, keyword in enumerate(Keywords):
@@ -93,6 +93,18 @@ def paper_compression(doi, title, topic, user_id, task):
     return compression_result
 
 def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", task=None):
+    """检索相关论文并提取领域实体，支持严格回退到摘要抽取
+    
+    参数:
+    - topic: 主题名称
+    - max_paper_num: 最大论文数量
+    - compression: 是否进行论文内容压缩
+    - user_id: 用户标识
+    - task: 任务对象（用于目录归档）
+    
+    返回:
+    - (keynum, relatedPaper, keyword_str): 关键词计数、相关论文列表、关键词说明字符串
+    """
     keynum = 0
     relatedPaper = []
     Entities = []
@@ -105,12 +117,27 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
                 compression_result = "None"
         else:
             compression_result = "None"
+        # 记录论文基本信息
         try:
             relatedPaper.append({"title": paper["title"], "abstract": paper["abstract"], "compression_result": compression_result})
-            for keyword in paper["keyword"]:
-                Entities.append(keyword)
-        except:
-            pass
+        except Exception:
+            continue
+        # 优先使用论文关键词；若缺失则严格回退到摘要实体抽取
+        paper_keywords = paper.get("keyword")
+        if paper_keywords:
+            try:
+                for keyword in paper_keywords:
+                    Entities.append(keyword)
+            except Exception:
+                pass
+        else:
+            try:
+                jr = call_with_deepseek_jsonout(system_prompt=extract_entity_prompt(), question=paper.get("abstract", ""))
+                extracted = jr.get("keywords", []) if jr else []
+                for kw in extracted:
+                    Entities.append(kw)
+            except Exception:
+                pass
     try:
         json_result = call_with_deepseek_jsonout(system_prompt=extract_entity_prompt(), question=f"""The content is: {Entities}.""")
         Keywords = json_result.get('keywords', []) if json_result else []
@@ -127,18 +154,34 @@ def search_releated_paper(topic, max_paper_num=5, compression=True, user_id="", 
     return keynum, relatedPaper, keyword_str
 
 def extract_message(file, split_section):
+    """从 Markdown 文件中严格提取指定分节内容
+    
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
+    
+    返回:
+    - (text, problem_statement): 原始文本与分节内容（严格匹配失败则抛出异常）
+    """
     text = read_markdown_file(file)
-    if split_section != "":
-        match = re.search(fr'### \S*{split_section}\S*(.*?)(?=###|---|\Z)', text, re.DOTALL)
-        if match:
-            problem_statement = match.group(1).strip()
-        else:
-            problem_statement = ""
-    else:
-        problem_statement = ""
+    if not split_section:
+        raise ValueError("split_section must be non-empty")
+    match = re.search(fr'### \S*{split_section}\S*(.*?)(?=###|---|\Z)', text, re.DOTALL)
+    if not match:
+        raise ValueError(f"Section '{split_section}' not found in file: {file}")
+    problem_statement = match.group(1).strip()
     return text, problem_statement
 
 def extract_technical_entities(file, split_section):
+    """针对指定分节内容进行技术实体抽取并评分排序
+    
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
+    
+    返回:
+    - (sorted_entities, text): 排序后的实体列表与原始文本
+    """
     text, problem_statement = extract_message(file, split_section)
     system_prompt = extract_tec_entities_prompt()
     Keywords = call_with_deepseek_jsonout(system_prompt=system_prompt, question=f'The content is: {problem_statement}')['keywords']
@@ -146,13 +189,22 @@ def extract_technical_entities(file, split_section):
     return sorted_entities, text
 
 def extract_message_review(file, split_section):
+    """从评审 Markdown 中严格抽取指定分节并结构化解析
+    
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
+    
+    返回:
+    - (text, result): 原始文本与结构化解析结果（严格匹配失败则抛出异常）
+    """
     text = read_markdown_file(file)
-    if split_section != "":
-        match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
-        if match:
-            problem_statement = match.group(2).strip()
-        else:
-            problem_statement = ""
+    if not split_section:
+        raise ValueError("split_section must be non-empty")
+    match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
+    if not match:
+        raise ValueError(f"Section '{split_section}' not found in file: {file}")
+    problem_statement = match.group(2).strip()
     if split_section == "Iterative Optimization Search Keywords":
         question = f"""Based on the content provided below, extract the next optimization search keywords. Return the 
         result only in the following JSON format. Do not add any explanations or irrelevant information. JSON output 
@@ -177,6 +229,17 @@ def extract_message_review(file, split_section):
     return text, result
 
 def review_mechanism(topic, draft="", user_id="", task=None):
+    """执行评审机制，生成评审文件并解析优化关键词
+    
+    参数:
+    - topic: 主题名称
+    - draft: 草案内容
+    - user_id: 用户标识
+    - task: 任务对象（用于目录归档）
+    
+    返回:
+    - keywords: 从评审结果提取的优化关键词列表
+    """
     system_prompt = review_mechanism_prompt()
     user_prompt = f"""# Idea Draft\n{draft}"""
     result = call_with_qwenmax(system_prompt=system_prompt, question=user_prompt)
@@ -192,14 +255,20 @@ def review_mechanism(topic, draft="", user_id="", task=None):
     return keywords
 
 def extract_message_review_moa(file, split_section):
+    """从 MoA 评审 Markdown 中严格抽取指定分节并返回行列表
+    
+    参数:
+    - file: 输入 Markdown 文件路径
+    - split_section: 目标分节标题关键字（严格匹配）
+    
+    返回:
+    - (text, problem_statement): 原始文本与分节内容的行列表（严格匹配失败则抛出异常）
+    """
     text = read_markdown_file(file)
-    if split_section != "":
-        match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
-        if match:
-            problem_statement = match.group(2).strip().split('\n')
-        else:
-            problem_statement = []
-    else:
-        problem_statement = []
+    if not split_section:
+        raise ValueError("split_section must be non-empty")
+    match = re.search(fr'(#.*{split_section}\**\:*)(.*?)(?=#|\Z|---)', text, re.DOTALL)
+    if not match:
+        raise ValueError(f"Section '{split_section}' not found in file: {file}")
+    problem_statement = match.group(2).strip().split('\n')
     return text, problem_statement
-
