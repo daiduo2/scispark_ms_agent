@@ -16,7 +16,7 @@ jobs:
       neo4j:
         image: neo4j:5.15-community
         env:
-          NEO4J_AUTH: neo4j:test
+          NEO4J_AUTH: neo4j/test
         ports:
           - 7687:7687
     strategy:
