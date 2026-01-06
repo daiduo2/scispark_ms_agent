@@ -5,7 +5,7 @@ import importlib.util
 
 
 def ensure_repo_root_on_path() -> None:
-    # 纭繚浠撳簱鏍圭洰褰曞姞鍏ys.path锛屾敮鎸佸寘璺緞瀵煎叆
+    """纭繚浠撳簱鏍圭洰褰曞姞鍏ys.path锛屾敮鎸佸寘璺緞瀵煎叆"""
     here = os.path.dirname(__file__)
     repo_root = os.path.dirname(here)
     if repo_root not in sys.path:
@@ -13,7 +13,8 @@ def ensure_repo_root_on_path() -> None:
 
 
 def check_import(module_path: str) -> bool:
-    # 鎸夌偣鍙疯矾寰勫鍏ユā鍧楋紝鎴愬姛杩斿洖True锛屽け璐ユ墦鍗板紓甯?    try:
+    """鎸夌偣鍙疯矾寰勫鍏ユā鍧楋紝鎴愬姛杩斿洖True锛屽け璐ユ墦鍗板紓甯?""
+    try:
         importlib.import_module(module_path)
         return True
     except Exception as e:
@@ -22,7 +23,7 @@ def check_import(module_path: str) -> bool:
 
 
 def run_import_checks() -> int:
-    # 杩愯瀵煎叆鍐掔儫妫€娴嬶紝涓嶆墽琛屼换浣曚笟鍔￠€昏緫
+    """杩愯瀵煎叆鍐掔儫妫€娴嬶紝涓嶆墽琛屼换浣曚笟鍔￠€昏緫"""
     ensure_repo_root_on_path()
     modules = []
     pkg_spec = importlib.util.find_spec("scispark_ms_skills")
@@ -65,5 +66,20 @@ def run_import_checks() -> int:
 
 
 def test_imports_smoke() -> None:
-    # pytest鍏ュ彛锛氭墍鏈夋ā鍧楀潎搴斿彲琚鍏?    failures = run_import_checks()
+    """pytest鍏ュ彛锛氭墍鏈夋ā鍧楀潎搴斿彲琚鍏?""
+    failures = run_import_checks()
     assert failures == 0, f"Import smoke failed with {failures} failing modules"
+
+
+def main() -> None:
+    """鑴氭湰鍏ュ彛锛氳繍琛屽鍏ユ鏌ュ苟浠ラ€€鍑虹爜琛ㄧず缁撴灉"""
+    failures = run_import_checks()
+    if failures:
+        print(f"[RESULT] import checks failed with {failures} failing modules")
+        sys.exit(1)
+    print("[RESULT] import checks passed")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
