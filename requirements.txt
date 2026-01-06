@@ -11,3 +11,5 @@ openai>=1.2,<2
 dashscope==1.14.1
 agentscope==0.1.0
 pandas>=2.2,<3
+
+bibtexparser>=1.4,<2
