@@ -1,5 +1,5 @@
 import uuid
-from scispark_ms_skills.common.workflow import Initial_Idea, Technical_Optimization, MoA_Based_Optimization, Human_AI_Collaboration
+from common.workflow import Initial_Idea, Technical_Optimization, MoA_Based_Optimization, Human_AI_Collaboration
 
 class SimpleTask:
     def __init__(self, task_id=None):
